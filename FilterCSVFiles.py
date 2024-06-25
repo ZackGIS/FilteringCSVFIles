@@ -64,8 +64,9 @@ for filename in os.listdir(inputFolderPath):   # iterate through all CSVs in the
                 dataFrame['description'].fillna('No description',
                                                    inplace=True)
 
-            if (containsRelevantTags(row.get('tags', '')) or containsRelevantTags(row.get('title', '')) or containsRelevantTags(row.get('url', '')) or containsRelevantTags(row.get('description', ''))) \
-                    and not (containsExcludeKeywords(row.get('tags', '')) or containsExcludeKeywords(row.get('title', '')) or containsExcludeKeywords(row.get('url', '')) or containsExcludeKeywords(row.get('description', ''))):
+        #this format is more readable
+            if (containsRelevantTags(row['tags']) or containsRelevantTags(row['title']) or containsRelevantTags(row['url']) or containsRelevantTags(row['description'])) \
+                and not (containsExcludeKeywords(row['tags']) or containsExcludeKeywords(row['title']) or containsExcludeKeywords(row['url']) or containsExcludeKeywords(row['description'])):
                 relevantRowsList.append(row)     # if it's relevant add it to the list
 
         relevantRows = pd.DataFrame(relevantRowsList)     #convert the list of relevant rows to a DataFrame with DataFrame function
