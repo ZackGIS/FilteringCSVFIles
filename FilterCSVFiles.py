@@ -1,7 +1,7 @@
 import os
 import pandas as pd
+import re
 
-#****** THIS IS THE CORRECT UPDATE *******
 inputFolderPath = r'C:\InternCSVs\GIS_Web_Services'   # path for input folder
 outputFolderPath = r'C:\InternCSVs\GIS_Web_Services\output'  # path for output folder
 
@@ -14,7 +14,7 @@ tags = ["environment", "leases", "blocks", "licenses", "bathymetry", "wells", "g
 
 # **** keywords that could possibly be taken out of this list -
 # survey
-irrelevantKeywords = ["school", "schools", "park", "parks", "wildlife", "miscellaneous", "addresses", "cemetaries",
+irrelevantKeywords = ["school", "schools", "park", "parks", "miscellaneous", "addresses", "cemetaries",
                       "building", "buildings", "condo", "condos", "municipalities", "landslides", "bus", "route",
                       "county", "fire", "medical", "hospital", "hospitals", "police", "education", "voter", "vote", "voting",
                       "canoe", "cave", "housing", "curb", "sewer", "ems", "pictometry", "law", "hydrants", "libraries",
@@ -29,52 +29,53 @@ irrelevantKeywords = ["school", "schools", "park", "parks", "wildlife", "miscell
 tagsSet = set(tags)  # converting list to a set for faster lookup
 irrelevantKeywordsSet = set(irrelevantKeywords)
 
-#https://pandas.pydata.org/docs/getting_started/comparison/comparison_with_sas.html#dataframe
-# Define a function to check if any of the tags are present in a string
+
 def containsRelevantTags(text):
     if pd.isnull(text):    # for reference https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.isnull.html#pandas.DataFrame.isnull
         return False
     text = text.lower()   # make sure text is all lowercase to avoid problems.
-    for tag in tagsSet:   #loop through each tag in the set
-        if tag in text:     # if a tag is present iin the text, return True bool.
+    for keyword in tagsSet:
+        if re.search(r'\b{}\b'.format(keyword), text):  # finds whole words. "b" is a boundary that matches
+                                                        # the position at the start or end of a word while {}
+                                                        # are placeholders for the keyword.
             return True
-    return False    # False otherwise
+    return False
 
 
-def containsExcludeKeywords(text):   # doing pretty much the same thing for this function as above
+def containsExcludeKeywords(text):
     if pd.isnull(text):
         return False
     text = text.lower()
     for keyword in irrelevantKeywordsSet:
-        if keyword in text:
+        if re.search(r'\b{}\b'.format(keyword), text):
             return True
+    return False
 
 
-for filename in os.listdir(inputFolderPath):   # iterate through all CSVs in the input folder
-    if filename.endswith('.csv'):              # endswith is a pd fucntion to test if the end of a string matches a pattern
-        csvFilePath = os.path.join(inputFolderPath, filename)   # variable for the csvFilePath for the individual CSVs
+for filename in os.listdir(inputFolderPath):  # iterate through all CSVs in the input folder
+    if filename.endswith('.csv'):  # endswith is a pd function to test if the end of a string matches a pattern
+        csvFilePath = os.path.join(inputFolderPath, filename)  # variable for the csvFilePath for the individual CSVs
 
-        dataFrame = pd.read_csv(csvFilePath)    #using pandas to read the indivisual CSVs
+        dataFrame = pd.read_csv(csvFilePath)  # using pandas to read the individual CSVs
 
-        relevantRowsList = []                # create a list to store the relevant rows
+        relevantRowsList = []  # create a list to store the relevant rows
 
-        # iterate over each row in the dataFrame
+        #start looping through the dataframe
         for index, row in dataFrame.iterrows():
             if 'description' in dataFrame.columns:
-                dataFrame['description'].fillna('No description',
-                                                   inplace=True)
+                dataFrame['description'].fillna('No description', inplace=True) # add a "no description first since we
+                # want to avoid checking null values for description below
 
-        #this format is more readable
-            if (containsRelevantTags(row['tags']) or containsRelevantTags(row['title']) or containsRelevantTags(row['url']) or containsRelevantTags(row['description'])) \
-                and not (containsExcludeKeywords(row['tags']) or containsExcludeKeywords(row['title']) or containsExcludeKeywords(row['url']) or containsExcludeKeywords(row['description'])):
-                relevantRowsList.append(row)     # if it's relevant add it to the list
+            # checking to see if row is relevant
+            if (containsRelevantTags(row['tags']) or containsRelevantTags(row['url']) or containsRelevantTags(row['title']) or containsRelevantTags(row['description'])) \
+                    and not (containsExcludeKeywords(row['tags']) or containsExcludeKeywords(row['url']) or containsExcludeKeywords(row['title']) or containsExcludeKeywords(row['description'])):
+                relevantRowsList.append(row)  # if it's relevant add it to the list
 
-        relevantRows = pd.DataFrame(relevantRowsList)     #convert the list of relevant rows to a DataFrame with DataFrame function
-
+        # Convert the list of relevant rows to a DataFrame
+        relevantRows = pd.DataFrame(relevantRowsList)
 
         outputCSVFilePath = os.path.join(outputFolderPath, filename)
         relevantRows.to_csv(outputCSVFilePath, index=False)
 
         print(f"Filtered DataFrame for {filename}:")
         print(relevantRows)
-
